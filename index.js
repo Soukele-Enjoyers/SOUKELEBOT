@@ -1,0 +1,61 @@
+const {Client ,  Collection,Events , GatewayIntentBits } = require ( 'discord.js' );
+const {token } = require ( './config.json' );
+const fs = require ( 'node:fs' );
+const path = require ( 'node:path' );
+
+
+
+const client = new Client({intents:[GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers,GatewayIntentBits.MessageContent],partials: ['CHANNEL', 'GUILD_MEMBER', 'MESSAGE', 'REACTION', 'USER']});
+
+client.commands = new Collection();
+
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+    const filepath = path.join(commandsPath,file);
+    const command = require(filepath);
+
+    if('data' in command && 'execute' in command){
+        client.commands.set(command.data.name, command);
+    }else{
+        console.log(`Command ${file} is not a valid command`);
+    }
+}
+
+client.on(Events.InteractionCreate, async interaction => {
+    if(!interaction.isCommand()) return;
+    console.log(interaction);
+});
+
+client.on(Events.InteractionCreate,async interaction => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+
+    if (!command) {
+        console.error(`Command ${interaction.commandName} not found`);
+        return;
+    }
+
+    try {
+        command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        await interaction.reply({content: 'There was an error while executing this command!', ephemeral: true});
+    }
+});
+
+client.on('ready', () => {
+    console.log(`Logged in as ${client.user.tag}!`);
+});
+
+
+
+
+
+
+
+
+
+client.login(token);
